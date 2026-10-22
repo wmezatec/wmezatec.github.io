@@ -554,6 +554,7 @@ number-flow{--number-flow-char-height:.9em;--number-flow-mask-height:.2em;font-v
    Con un servicio de formularios (p. ej. Web3Forms) poné acá la URL y la clave: el mensaje le llega
    a Martín por mail/notificación y el visitante no sale de la página. Ver NOTAS_DISENO.md. */
 (function(){
+  var SUPA={url:"https://galysiblrnahsjspfvej.supabase.co",key:"sb_publishable_3vlXbD_EvxdHC9dhqQRcZQ_POgiOs1L"};
   var ENDPOINT="https://api.web3forms.com/submit", CLAVE="53580c2e-ec75-42b5-86a9-9ebbe006afcb", WSP="5492235313019";
   var f=document.getElementById("consulta"); if(!f)return;
   var est=document.getElementById("consulta-estado"), btn=f.querySelector("button[type=submit]");
@@ -566,13 +567,17 @@ number-flow{--number-flow-char-height:.9em;--number-flow-mask-height:.2em;font-v
     var txt="Hola, vengo de la web.\nNombre: "+d.nombre+(d.empresa?"\nEmpresa: "+d.empresa:"")+"\nTeléfono: "+d.telefono+"\nConsulta: "+d.tipo+"\n"+d.mensaje;
     if(!ENDPOINT||!CLAVE){window.open("https://wa.me/"+WSP+"?text="+encodeURIComponent(txt),"_blank","noopener");dec("Se abrió WhatsApp con tu mensaje. Tocá enviar.","ok");return}
     btn.disabled=true;dec("Enviando…");
-    fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
+    /* Va por mail (Web3Forms) y también al sistema (Supabase); alcanza con que llegue por uno */
+    var mail=fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
       body:JSON.stringify({access_key:CLAVE,subject:"Consulta web: "+d.tipo,from_name:d.nombre,name:d.nombre,empresa:d.empresa,telefono:d.telefono,tipo:d.tipo,message:d.mensaje})})
-      .then(function(r){return r.json()}).then(function(j){
-        if(!j.success)throw 0;
-        f.reset();dec("¡Listo! Recibí tu consulta y te respondo a la brevedad.","ok");
-      }).catch(function(){dec("No se pudo enviar. Escribime por WhatsApp.","mal")})
-      .then(function(){btn.disabled=false});
+      .then(function(r){return r.json()}).then(function(j){if(!j.success)throw 0});
+    var sistema=fetch(SUPA.url+"/rest/v1/mensajes",{method:"POST",headers:{apikey:SUPA.key,"Content-Type":"application/json",Prefer:"return=minimal"},
+      body:JSON.stringify({nombre:d.nombre.slice(0,120),empresa:d.empresa.slice(0,120)||null,telefono:d.telefono.slice(0,40),tipo:d.tipo.slice(0,80),mensaje:d.mensaje.slice(0,4000)})})
+      .then(function(r){if(!r.ok)throw 0});
+    var ok=0,listos=0;
+    [mail,sistema].forEach(function(pr){pr.then(function(){ok++}).catch(function(){}).then(function(){if(++listos<2)return;
+      if(ok){f.reset();dec("¡Listo! Recibí tu consulta y te respondo a la brevedad.","ok")}else dec("No se pudo enviar. Escribime por WhatsApp.","mal");
+      btn.disabled=false})});
   });
 })();
 </script>
